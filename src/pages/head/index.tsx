@@ -4,6 +4,7 @@ import './index.less';
 
 const Head = () => {
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
   const isDragging = useRef(false);
   const initialPos = useRef({ offsetX: 0, offsetY: 0 });
   const parentRef = useRef<HTMLDivElement>(null); // 父容器引用
@@ -44,7 +45,12 @@ const Head = () => {
 
   // 处理鼠标释放
   const handleMouseUp = useCallback(() => {
+    if (!isDragging.current) return;
     isDragging.current = false;
+    setDragging(false); // 新增状态变量触发渲染
+
+    // 强制移除拖拽类名（保险机制）
+    parentRef.current?.classList.remove('dragging');
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
   }, [handleMouseMove]);
@@ -53,6 +59,7 @@ const Head = () => {
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       isDragging.current = true;
+      setDragging(true);
 
       // 计算初始偏移量
       const rect = e.currentTarget.getBoundingClientRect();
@@ -75,9 +82,20 @@ const Head = () => {
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [handleMouseMove, handleMouseUp]);
+  useEffect(() => {
+    const handleMouseUpGlobal = () => {
+      handleMouseUp();
+    };
+
+    window.addEventListener('mouseup', handleMouseUpGlobal);
+
+    return () => {
+      window.removeEventListener('mouseup', handleMouseUpGlobal);
+    };
+  }, [handleMouseUp]);
 
   return (
-    <Layout rootClassName={`head ${isDragging.current ? 'show-grid' : ''}`} ref={parentRef}>
+    <Layout rootClassName={`head ${dragging ? 'show-grid' : ''}`} ref={parentRef}>
       <div
         className='h-main'
         style={{
